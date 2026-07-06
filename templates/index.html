@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Podcast Agent</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d29;
+    --surface2: #242838;
+    --border: #2e3350;
+    --text: #e8eaf0;
+    --text2: #9499b8;
+    --accent: #7c5cfc;
+    --accent2: #5b3de5;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --radius: 12px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; width: 100%; }
+
+  header {
+    text-align: center;
+    padding: 40px 0 30px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  header p { color: var(--text2); margin-top: 8px; font-size: 0.95rem; }
+
+  .input-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .input-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .input-row { display: flex; gap: 12px; }
+
+  .input-row input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-row input:focus { border-color: var(--accent); }
+  .input-row input::placeholder { color: var(--text2); }
+
+  .input-row button {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .input-row button:hover { opacity: 0.9; }
+  .input-row button:active { transform: scale(0.97); }
+  .input-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+  }
+
+  .status-badge.idle { background: var(--surface2); color: var(--text2); }
+  .status-badge.running { background: rgba(124, 92, 252, 0.15); color: var(--accent); }
+  .status-badge.done { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .status-badge.error { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .status-badge.playing { background: rgba(96, 165, 250, 0.15); color: var(--blue); }
+
+  .progress-bar {
+    width: 100%; height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .progress-bar .fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--blue));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .stages {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .stage-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; padding: 12px 8px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    opacity: 0.4;
+    transition: all 0.3s;
+  }
+
+  .stage-item.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 20px rgba(124, 92, 252, 0.15); }
+  .stage-item.done { opacity: 1; border-color: var(--green); }
+  .stage-item .icon { font-size: 1.3rem; line-height: 1; }
+  .stage-item .name { font-size: 0.75rem; font-weight: 500; text-align: center; color: var(--text2); }
+  .stage-item.done .name { color: var(--green); }
+  .stage-item.active .name { color: var(--text); }
+
+  .output-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 300px;
+  }
+
+  .output-panel .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    overflow-x: auto;
+  }
+
+  .output-panel .tabs button {
+    padding: 10px 16px; border: none;
+    background: transparent; color: var(--text2);
+    font-size: 0.8rem; font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .output-panel .tabs button:hover { color: var(--text); }
+  .output-panel .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .output-panel .tab-content {
+    padding: 20px; display: none;
+    max-height: 500px; overflow-y: auto;
+    line-height: 1.6; font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+
+  .output-panel .tab-content.active { display: block; }
+  .output-panel .tab-content.empty { color: var(--text2); font-style: italic; }
+
+  .tab-content .line-highlight {
+    background: rgba(124, 92, 252, 0.15);
+    border-left: 3px solid var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: background 0.3s;
+  }
+
+  .research-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+  }
+
+  .research-card .src { font-size: 0.7rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .research-card .title { font-weight: 600; margin: 4px 0; }
+  .research-card .snippet { color: var(--text2); font-size: 0.85rem; }
+
+  .tts-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .tts-section h3 {
+    font-size: 0.9rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 14px;
+  }
+
+  .tts-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tts-voice-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+  }
+
+  .tts-voice-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tts-voice-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .tts-controls select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    min-width: 100px;
+  }
+
+  .tts-controls select:focus { border-color: var(--accent); }
+  .tts-voice-select:focus { border-color: var(--accent); }
+
+  .tts-speaker-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: rgba(124, 92, 252, 0.15);
+    color: var(--accent);
+    margin-left: auto;
+  }
+
+  .tts-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tts-btn:hover { opacity: 0.9; }
+  .tts-btn:active { transform: scale(0.97); }
+  .tts-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .tts-btn.play { background: var(--accent); color: white; }
+  .tts-btn.pause { background: var(--yellow); color: #000; }
+  .tts-btn.stop { background: var(--red); color: white; }
+
+  .tts-status {
+    font-size: 0.8rem;
+    color: var(--text2);
+    margin-left: auto;
+  }
+
+  .tts-global-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tts-actor-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tts-actor-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    flex: 1;
+    min-width: 220px;
+    position: relative;
+  }
+
+  .tts-actor-card .actor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .tts-actor-card .actor-label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tts-actor-card .actor-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+
+  .tts-actor-card .actor-remove:hover { opacity: 1; }
+
+  .tts-actor-card select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.82rem;
+    outline: none;
+    cursor: pointer;
+    margin-bottom: 6px;
+  }
+
+  .tts-actor-card select:focus { border-color: var(--accent); }
+
+  .tts-actor-card .role-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+    cursor: text;
+    margin-bottom: 6px;
+  }
+
+  .tts-actor-card .role-input:focus { border-color: var(--accent); }
+
+  .tts-actor-card .voice-select {
+    margin-bottom: 0;
+  }
+
+  .tts-voices-info {
+    font-size: 0.75rem;
+    color: var(--text2);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  footer { text-align: center; padding: 24px; color: var(--text2); font-size: 0.8rem; margin-top: auto; }
+
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(124, 92, 252, 0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 12px 20px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 0.9rem;
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.3s; z-index: 100;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  .speaker-config-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+
+  .speaker-config-card .speaker-config-role {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    outline: none;
+    width: 110px;
+    padding: 4px 0;
+  }
+
+  .speaker-config-card .speaker-config-role:focus { color: var(--accent); }
+
+  .speaker-config-card .speaker-config-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 2px;
+    opacity: 0.5;
+    line-height: 1;
+  }
+
+  .speaker-config-card .speaker-config-remove:hover { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .container { padding: 16px 12px; }
+    header h1 { font-size: 1.5rem; }
+    .input-row { flex-direction: column; }
+    .input-row button { width: 100%; }
+    .stages { grid-template-columns: repeat(3, 1fr); }
+    .tts-controls { flex-direction: column; align-items: stretch; }
+    .tts-controls select { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>AI Podcast Agent</h1>
+    <p>Enter a topic — AI researches, writes, critiques, and refines a podcast script with TTS playback</p>
+  </header>
+
+  <div class="input-section">
+    <label for="topic">Podcast Topic</label>
+    <div class="input-row">
+      <input type="text" id="topic" placeholder="e.g. Quantum Computing, AI in Healthcare, Space Exploration..." value="Explain LLM fine-tuning techniques">
+      <button id="generateBtn" onclick="startGeneration()">Generate Podcast</button>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <label style="font-size:0.85rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin:0;">Speakers</label>
+        <button id="addSpeakerConfigBtn" onclick="addSpeakerConfig()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">+ Add</button>
+      </div>
+      <div id="speakerConfigs" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div id="progressArea" style="display:none;">
+    <div class="status-badge idle" id="statusBadge">
+      <span class="spinner" id="statusSpinner" style="display:none;"></span>
+      <span id="statusText">Ready</span>
+    </div>
+
+    <div class="progress-bar">
+      <div class="fill" id="progressFill"></div>
+    </div>
+
+    <div class="stages">
+      <div class="stage-item" data-stage="outline"><span class="icon">📋</span><span class="name">Outline</span></div>
+      <div class="stage-item" data-stage="research"><span class="icon">🔍</span><span class="name">Research</span></div>
+      <div class="stage-item" data-stage="write"><span class="icon">✍️</span><span class="name">Write</span></div>
+      <div class="stage-item" data-stage="critique"><span class="icon">🎯</span><span class="name">Critique</span></div>
+      <div class="stage-item" data-stage="revise"><span class="icon">🔄</span><span class="name">Revise</span></div>
+      <div class="stage-item" data-stage="done"><span class="icon">✅</span><span class="name">Done</span></div>
+    </div>
+  </div>
+
+  <div class="output-panel">
+    <div class="tabs" id="tabBar">
+      <button class="active" data-tab="outline">Outline</button>
+      <button data-tab="research">Research</button>
+      <button data-tab="draft">Draft</button>
+      <button data-tab="critique">Critique</button>
+      <button data-tab="final">Final Script</button>
+    </div>
+
+    <div class="tab-content active" id="tab-outline">
+      <div class="empty" id="outlinePlaceholder">⏳ Generate a podcast to see the outline...</div>
+      <div id="outlineContent" style="display:none;"></div>
+    </div>
+    <div class="tab-content" id="tab-research">
+      <div class="empty" id="researchPlaceholder">⏳ Research results will appear here...</div>
+      <div id="researchContent" style="display:none;"></div>
+    </div>
+    <div class="tab-content" id="tab-draft">
+      <div class="empty" id="draftPlaceholder">⏳ Draft script will appear here...</div>
+      <div id="draftContent" style="display:none;"></div>
+    </div>
+    <div class="tab-content" id="tab-critique">
+      <div class="empty" id="critiquePlaceholder">⏳ Critique will appear here...</div>
+      <div id="critiqueContent" style="display:none;"></div>
+    </div>
+    <div class="tab-content" id="tab-final">
+      <div class="empty" id="finalPlaceholder">⏳ Final script will appear here...</div>
+      <div id="finalContent" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="tts-section" id="ttsSection" style="display:none;">
+    <h3>🎙️ Podcast Voices</h3>
+    <div class="tts-global-row">
+      <div class="tts-voice-group">
+        <label>Language</label>
+        <select id="ttsLang">
+          <option value="">All Languages</option>
+        </select>
+      </div>
+      <div class="tts-voice-group">
+        <label>Speed</label>
+        <select id="ttsSpeed">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+      </div>
+      <button class="tts-btn play" id="ttsPlayBtn" onclick="ttsPlay()">▶ Play</button>
+      <button class="tts-btn pause" id="ttsPauseBtn" onclick="ttsPause()" disabled>⏸ Pause</button>
+      <button class="tts-btn stop" id="ttsStopBtn" onclick="ttsStop()" disabled>⏹ Stop</button>
+      <span class="tts-status" id="ttsStatus">Ready</span>
+      <span class="tts-speaker-badge" id="ttsSpeakerBadge" style="display:none;"></span>
+    </div>
+    <div class="tts-actor-row" id="ttsActors"></div>
+    <div style="margin-top:10px;">
+      <button class="tts-btn" id="ttsAddSpeakerBtn" onclick="addSpeaker()" style="background:var(--surface2);color:var(--text2);font-size:0.8rem;">+ Add Speaker</button>
+    </div>
+    <div class="tts-controls" style="margin-top:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text2);cursor:pointer;">
+        <input type="checkbox" id="ttsAmbientSounds" checked>
+        Ambient sounds (laughs, breaths, etc.)
+      </label>
+    </div>
+    <div class="tts-voices-info" id="ttsVoiceInfo"></div>
+  </div>
+</div>
+
+<datalist id="rolesDatalist">
+  <option value="Host"><option value="Student"><option value="Developer">
+  <option value="Teacher"><option value="Professor"><option value="Lawyer">
+  <option value="Expert"><option value="Researcher"><option value="Analyst">
+  <option value="Policy Maker"><option value="Journalist"><option value="Skeptic">
+  <option value="Enthusiast"><option value="CEO"><option value="Engineer">
+  <option value="Scientist"><option value="Doctor"><option value="Client">
+  <option value="Judge"><option value="Coach"><option value="Founder">
+</datalist>
+<footer>Powered by LangGraph + Gemini · TTS via Web Speech API</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ TTS Engine (Role-Based) ============
+let ttsVoices = [];
+let ttsUtterance = null;
+let ttsLines = [];
+let ttsCurrentLine = -1;
+let ttsIsPlaying = false;
+let ttsIsPaused = false;
+let speakerCount = 2;
+let lastRoles = [];
+let voicePrefs = {};
+
+const DEFAULT_ROLES = ['Host', 'Student', 'Expert'];
+const ROLE_PRESETS = [
+  'Host', 'Student', 'Developer', 'Teacher', 'Professor', 'Lawyer',
+  'Expert', 'Researcher', 'Analyst', 'Policy Maker', 'Journalist',
+  'Skeptic', 'Enthusiast', 'CEO', 'Engineer', 'Scientist', 'Doctor',
+  'Client', 'Judge', 'Coach', 'Founder',
+];
+
+const AMBIENT_SOUNDS = {
+  '(laughs)': { text: '* laughs *', pitch: 1.5, rate: 1.1 },
+  '(chuckles)': { text: '* chuckles *', pitch: 1.3, rate: 0.9 },
+  '(laughing)': { text: '* laughing *', pitch: 1.4, rate: 1.0 },
+  '(sighs)': { text: '* sighs *', pitch: 0.7, rate: 0.6 },
+  '(exhales)': { text: '* exhales *', pitch: 0.7, rate: 0.6 },
+  '(sharp intake of breath)': { text: '* gasps *', pitch: 1.6, rate: 0.8 },
+  '(blows out breath)': { text: '* phew *', pitch: 0.8, rate: 0.7 },
+  '(clears throat)': { text: '* ahem *', pitch: 0.9, rate: 0.5 },
+  '(whistles)': { text: '* whistle *', pitch: 1.8, rate: 0.6 },
+  '(pauses)': { text: '... ...', pitch: 1.0, rate: 0.3 },
+  '(lets that sink in)': { text: '... ...', pitch: 1.0, rate: 0.3 },
+  '(long exhale)': { text: '* long exhale *', pitch: 0.6, rate: 0.4 },
+  '(nervous laugh)': { text: '* nervous laugh *', pitch: 1.3, rate: 0.9 },
+  '(nervous exhale)': { text: '* nervous exhale *', pitch: 0.8, rate: 0.6 },
+  '(frustrated sigh)': { text: '* frustrated sigh *', pitch: 0.7, rate: 0.5 },
+  '(deep breath)': { text: '* deep breath *', pitch: 0.8, rate: 0.5 },
+  '(warm laugh)': { text: '* warm laugh *', pitch: 1.2, rate: 0.9 },
+  '(trails off)': { text: '... ...', pitch: 0.8, rate: 0.3 },
+  '(emphatically)': { text: '* emphatic *', pitch: 1.1, rate: 0.9 },
+  '(excitedly)': { text: '* excitedly *', pitch: 1.4, rate: 1.2 },
+};
+
+function getVoiceForRole(roleName, fallbackIndex) {
+  const cards = document.querySelectorAll('.tts-actor-card');
+  // First, try exact role match
+  for (const card of cards) {
+    const r = card.querySelector('.role-input');
+    if (r && r.value.trim().toLowerCase() === roleName.trim().toLowerCase()) {
+      const v = card.querySelector('.voice-select');
+      const idx = v ? v.value : '';
+      if (idx !== '' && ttsVoices[parseInt(idx)]) return ttsVoices[parseInt(idx)];
+    }
+  }
+  // Retry without trailing number (e.g. "Host 1" -> "Host")
+  const base = roleName.replace(/\s+\d+$/, '').trim();
+  if (base !== roleName) return getVoiceForRole(base, fallbackIndex);
+  // Fallback: use card index matching the role index in the script
+  if (fallbackIndex !== undefined) {
+    const card = cards[fallbackIndex];
+    if (card) {
+      const v = card.querySelector('.voice-select');
+      const idx = v ? v.value : '';
+      if (idx !== '' && ttsVoices[parseInt(idx)]) return ttsVoices[parseInt(idx)];
+    }
+  }
+  // Last resort: English voice (prefer selected language)
+  const lang = document.getElementById('ttsLang').value;
+  let match = lang ? ttsVoices.find(v => v.lang === lang) : null;
+  if (!match) match = ttsVoices.find(v => v.lang && v.lang.startsWith('en-'));
+  return match || ttsVoices[0] || null;
+}
+
+function populateLangSelect() {
+  const langSel = document.getElementById('ttsLang');
+  const allLangs = [...new Set(ttsVoices.map(v => v.lang).filter(Boolean))].sort();
+  const english = allLangs.filter(l => l.startsWith('en-'));
+  const options = english.length ? english : allLangs;
+  langSel.innerHTML = options.map(l => `<option value="${l}">${l}</option>`).join('');
+  if (options.includes('en-US')) langSel.value = 'en-US';
+  else if (options.includes('en-GB')) langSel.value = 'en-GB';
+  else if (options.length) langSel.value = options[0];
+}
+
+function refreshVoiceOptions() {
+  const lang = document.getElementById('ttsLang').value;
+  const cards = document.querySelectorAll('.tts-actor-card');
+  cards.forEach(card => {
+    const select = card.querySelector('.voice-select');
+    const current = select.value;
+    let html = '';
+    ttsVoices.forEach((v, i) => {
+      if (lang && v.lang !== lang) return;
+      html += `<option value="${i}">${v.name} (${v.lang})</option>`;
+    });
+    select.innerHTML = html;
+    if (current && parseInt(current) < ttsVoices.length) {
+      const v = ttsVoices[parseInt(current)];
+      if (!lang || v.lang === lang) select.value = current;
+    }
+    if (!select.value && html) {
+      const opts = select.options;
+      // Separate by gender for more diverse defaults
+      const males = [], females = [], others = [];
+      for (let o = 0; o < opts.length; o++) {
+        const v = ttsVoices[parseInt(opts[o].value)];
+        if (v.name.toLowerCase().includes('male')) males.push(o);
+        else if (v.name.toLowerCase().includes('female')) females.push(o);
+        else others.push(o);
+      }
+      const idx = parseInt(card.dataset.speakerIndex);
+      const candidates = idx % 2 === 0 ? (males.length ? males : females.length ? females : others)
+                                         : (females.length ? females : males.length ? males : others);
+      const target = idx < candidates.length ? candidates[idx] : (candidates[0] || 0);
+      if (opts[target]) select.value = opts[target].value;
+      else if (opts[0]) select.value = opts[0].value;
+    }
+    updateVoiceDisplay(card);
+  });
+  updateVoiceInfo();
+}
+
+function updateVoiceDisplay(card) {
+  const select = card.querySelector('.voice-select');
+  const display = card.querySelector('.voice-name');
+  if (!display) return;
+  const idx = select.value;
+  if (idx !== '' && ttsVoices[parseInt(idx)]) {
+    const v = ttsVoices[parseInt(idx)];
+    const gender = v.name.toLowerCase().includes('female') ? '♀' : v.name.toLowerCase().includes('male') ? '♂' : '●';
+    display.textContent = `${gender} ${v.name} (${v.lang})`;
+  } else {
+    display.textContent = 'No voice selected';
+  }
+}
+
+// Update voice name display when selection changes
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('voice-select')) {
+    const card = e.target.closest('.tts-actor-card');
+    if (card) {
+      updateVoiceDisplay(card);
+      const role = card.querySelector('.role-input');
+      if (role && role.value.trim()) {
+        voicePrefs[role.value.trim().toLowerCase()] = e.target.value;
+      }
+    }
+  }
+});
+
+function updateVoiceInfo() {
+  const lang = document.getElementById('ttsLang').value;
+  const filtered = lang ? ttsVoices.filter(v => v.lang === lang) : ttsVoices;
+  const m = filtered.filter(v => v.name.toLowerCase().includes('male')).length;
+  const f = filtered.filter(v => v.name.toLowerCase().includes('female')).length;
+  document.getElementById('ttsVoiceInfo').textContent =
+    `${filtered.length} voices · ${f} female · ${m} male` + (lang ? ` (${lang})` : '');
+}
+
+function updateCardHeader(card) {
+  const input = card.querySelector('.role-input');
+  const header = card.querySelector('.actor-header span');
+  if (input && header) header.textContent = input.value || '?';
+}
+
+function buildSpeakerCard(index) {
+  const card = document.createElement('div');
+  card.className = 'tts-actor-card';
+  card.dataset.speakerIndex = index;
+  const canRemove = index >= 2;
+  const defaultRole = DEFAULT_ROLES[index] || 'Speaker';
+  const presets = ROLE_PRESETS.map(r =>
+    `<option value="${r}"${r === defaultRole ? ' selected' : ''}>${r}</option>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="actor-header">
+      <span class="actor-label">${defaultRole}</span>
+      ${canRemove ? '<button class="actor-remove" onclick="removeSpeaker(this)" title="Remove">✕</button>' : ''}
+    </div>
+    <input class="role-input" type="text" value="${defaultRole}" list="roleList${index}" spellcheck="false">
+    <datalist id="roleList${index}">${presets}</datalist>
+    <select class="voice-select"></select>
+    <div class="voice-name" style="font-size:0.72rem;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  `;
+
+  const input = card.querySelector('.role-input');
+  input.addEventListener('input', () => updateCardHeader(card));
+  return card;
+}
+
+function setupTTSCards(roles) {
+  speakerCount = Math.min(roles.length, 3);
+  const container = document.getElementById('ttsActors');
+  container.innerHTML = '';
+  for (let i = 0; i < speakerCount; i++) {
+    const card = buildSpeakerCard(i);
+    const input = card.querySelector('.role-input');
+    if (input && roles[i]) {
+      input.value = roles[i];
+      const select = card.querySelector('.voice-select');
+      const saved = voicePrefs[roles[i].toLowerCase()];
+      if (saved && select) select.value = saved;
+    }
+    container.appendChild(card);
+    updateCardHeader(card);
+  }
+  document.getElementById('ttsAddSpeakerBtn').style.display = speakerCount >= 3 ? 'none' : 'inline-block';
+  refreshVoiceOptions();
+}
+
+function renderSpeakers() {
+  const container = document.getElementById('ttsActors');
+  container.innerHTML = '';
+  for (let i = 0; i < speakerCount; i++) {
+    container.appendChild(buildSpeakerCard(i));
+  }
+  document.getElementById('ttsAddSpeakerBtn').style.display = speakerCount >= 3 ? 'none' : 'inline-block';
+  refreshVoiceOptions();
+}
+
+function addSpeaker() {
+  if (speakerCount >= 3) return;
+  speakerCount++;
+  renderSpeakers();
+}
+
+function removeSpeaker(btn) {
+  const card = btn.closest('.tts-actor-card');
+  if (!card) return;
+  speakerCount--;
+  renderSpeakers();
+}
+
+function loadVoices() {
+  ttsVoices = speechSynthesis.getVoices();
+  if (ttsVoices.length === 0) {
+    document.getElementById('ttsVoiceInfo').textContent = 'No voices found. Try Chrome or Edge.';
+    return;
+  }
+  populateLangSelect();
+  renderSpeakers();
+}
+
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+  setTimeout(loadVoices, 600);
+}
+
+document.getElementById('ttsLang').addEventListener('change', refreshVoiceOptions);
+
+function parseLine(raw) {
+  let text = raw.replace(/\*\*/g, '').trim();
+  const match = text.match(/^([\w\s]+?)\s*:\s*(.*)/);
+  if (match) {
+    return { role: match[1].trim(), text: match[2].trim() };
+  }
+  return { role: '', text };
+}
+
+function extractSounds(text) {
+  const sounds = [];
+  const keys = Object.keys(AMBIENT_SOUNDS).sort((a, b) => b.length - a.length);
+  let remaining = text;
+  for (const key of keys) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'gi');
+    let match;
+    while ((match = regex.exec(remaining)) !== null) {
+      sounds.push({ key: match[0].toLowerCase() });
+      remaining = (remaining.slice(0, match.index) + ' ' + remaining.slice(match.index + match[0].length)).trim();
+    }
+  }
+  return { sounds, cleanText: remaining.trim() };
+}
+
+function getUtteranceForSound(soundKey, voice, speed) {
+  const def = AMBIENT_SOUNDS[soundKey];
+  if (!def) return null;
+  const utt = new SpeechSynthesisUtterance(def.text);
+  if (voice) utt.voice = voice;
+  utt.rate = (speed || 1) * def.rate;
+  utt.pitch = def.pitch;
+  utt.volume = 0.7;
+  return utt;
+}
+
+function speakLine(text, voice, speed, callback) {
+  const ambientEnabled = document.getElementById('ttsAmbientSounds').checked;
+  const { sounds, cleanText } = ambientEnabled ? extractSounds(text) : { sounds: [], cleanText: text };
+  const queue = [];
+  if (cleanText) {
+    const utt = new SpeechSynthesisUtterance(cleanText);
+    if (voice) utt.voice = voice;
+    utt.rate = speed;
+    utt.pitch = 1;
+    utt.volume = 1;
+    queue.push(utt);
+  }
+  if (ambientEnabled) {
+    for (const s of sounds) {
+      const su = getUtteranceForSound(s.key, voice, speed);
+      if (su) queue.push(su);
+    }
+  }
+  if (queue.length === 0) { callback(); return; }
+  let idx = 0;
+  function next() {
+    if (idx >= queue.length) { callback(); return; }
+    const u = queue[idx++];
+    u.onend = next;
+    u.onerror = next;
+    ttsUtterance = u;
+    speechSynthesis.speak(u);
+  }
+  next();
+}
+
+function ttsPlay() {
+  const container = document.getElementById('finalContent');
+  const placeholder = document.getElementById('finalPlaceholder');
+  if (placeholder.style.display !== 'none' || !container.textContent.trim()) {
+    showToast('Generate a podcast first, then play the final script');
+    return;
+  }
+  const lines = [...container.children].map(el => el.textContent.trim()).filter(l => l.length > 0);
+  ttsLines = lines;
+  if (ttsLines.length === 0) { showToast('Nothing to play'); return; }
+  ttsCurrentLine = -1;
+  ttsIsPaused = false;
+  ttsIsPlaying = true;
+  document.getElementById('ttsPlayBtn').disabled = true;
+  document.getElementById('ttsPauseBtn').disabled = false;
+  document.getElementById('ttsStopBtn').disabled = false;
+  document.getElementById('ttsStatus').textContent = 'Playing...';
+  document.getElementById('ttsSpeakerBadge').style.display = 'inline-flex';
+  setStatus('playing', 'Playing podcast');
+  switchTab('final');
+  playNextLine();
+}
+
+function playNextLine() {
+  if (!ttsIsPlaying || ttsIsPaused) return;
+  ttsCurrentLine++;
+  if (ttsCurrentLine >= ttsLines.length) {
+    ttsStop();
+    showToast('Podcast complete!');
+    return;
+  }
+  const raw = ttsLines[ttsCurrentLine];
+  const parsed = parseLine(raw);
+  highlightLine(ttsCurrentLine);
+  const speed = parseFloat(document.getElementById('ttsSpeed').value);
+  // Find fallback index: which position does this role occupy in lastRoles?
+  let fallbackIdx = 0;
+  if (parsed.role && lastRoles.length) {
+    const found = lastRoles.findIndex(r => r.toLowerCase() === parsed.role.toLowerCase());
+    if (found >= 0) fallbackIdx = found;
+    else {
+      const base = parsed.role.replace(/\s+\d+$/, '').trim();
+      if (base !== parsed.role) {
+        const found2 = lastRoles.findIndex(r => r.toLowerCase() === base.toLowerCase());
+        if (found2 >= 0) fallbackIdx = found2;
+      }
+    }
+  }
+  const voice = parsed.role ? getVoiceForRole(parsed.role, fallbackIdx) : ttsVoices[0];
+  const badge = document.getElementById('ttsSpeakerBadge');
+  badge.textContent = parsed.role ? `🎙 ${parsed.role}` : '🎙 Narrator';
+  speakLine(parsed.text, voice, speed, () => {
+    if (ttsIsPlaying && !ttsIsPaused) playNextLine();
+  });
+}
+
+function ttsPause() {
+  if (ttsIsPaused) {
+    ttsIsPaused = false;
+    speechSynthesis.resume();
+    document.getElementById('ttsPauseBtn').textContent = '⏸ Pause';
+    document.getElementById('ttsStatus').textContent = 'Playing...';
+  } else {
+    ttsIsPaused = true;
+    speechSynthesis.pause();
+    document.getElementById('ttsPauseBtn').textContent = '▶ Resume';
+    document.getElementById('ttsStatus').textContent = 'Paused';
+  }
+}
+
+function ttsStop() {
+  ttsIsPlaying = false;
+  ttsIsPaused = false;
+  speechSynthesis.cancel();
+  ttsUtterance = null;
+  clearHighlight();
+  document.getElementById('ttsPlayBtn').disabled = false;
+  document.getElementById('ttsPauseBtn').disabled = true;
+  document.getElementById('ttsStopBtn').disabled = true;
+  document.getElementById('ttsPauseBtn').textContent = '⏸ Pause';
+  document.getElementById('ttsStatus').textContent = 'Stopped';
+  document.getElementById('ttsSpeakerBadge').style.display = 'none';
+  setStatus('done', 'Complete');
+}
+
+function highlightLine(idx) {
+  const container = document.getElementById('finalContent');
+  clearHighlight();
+  const lines = container.querySelectorAll('div, p');
+  if (idx < lines.length) {
+    lines[idx].classList.add('line-highlight');
+    lines[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+
+function clearHighlight() {
+  document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight'));
+}
+
+// ============ UI / Generation ============
+const stageMap = {
+  'generating_outline': 'outline', 'researching': 'research',
+  'writing_script': 'write', 'critiquing': 'critique',
+  'revising': 'revise', 'complete': 'done',
+};
+
+const tabMap = {
+  'outline': 'tab-outline', 'research': 'tab-research',
+  'draft': 'tab-draft', 'critique': 'tab-critique',
+  'final': 'tab-final',
+};
+
+function setStatus(state, text) {
+  const badge = document.getElementById('statusBadge');
+  const spinner = document.getElementById('statusSpinner');
+  const textEl = document.getElementById('statusText');
+  badge.className = 'status-badge ' + state;
+  spinner.style.display = state === 'running' ? 'inline-block' : 'none';
+  textEl.textContent = text;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function activateStage(sid) {
+  document.querySelectorAll('.stage-item').forEach(el => {
+    el.classList.remove('active', 'done');
+    if (el.dataset.stage === sid) el.classList.add('active');
+  });
+}
+
+function completeStage(sid) {
+  document.querySelectorAll('.stage-item').forEach(el => {
+    if (el.dataset.stage === sid) { el.classList.remove('active'); el.classList.add('done'); }
+  });
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  const btn = document.querySelector(`.tabs button[data-tab="${tabId}"]`);
+  if (btn) btn.classList.add('active');
+  const content = document.getElementById(tabMap[tabId] || ('tab-' + tabId));
+  if (content) content.classList.add('active');
+}
+
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    .replace(/## (.+)/g, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function renderAsLines(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  return lines.map(l => `<div>${l}</div>`).join('');
+}
+
+function renderResearch(results) {
+  let html = '';
+  (Array.isArray(results) ? results : []).forEach(r => {
+    html += `<div class="research-card">
+      <div class="src">${r.source || 'Source'}</div>
+      <div class="title">${r.title || ''}</div>
+      <div class="snippet">${r.snippet || r.page_content || ''}</div>
+    </div>`;
+  });
+  return html || '<div class="empty">No research results yet.</div>';
+}
+
+// ============ Speaker Config ============
+let configSpeakerCount = 0;
+
+function addSpeakerConfig(role) {
+  const container = document.getElementById('speakerConfigs');
+  const existing = container.querySelectorAll('.speaker-config-card');
+  if (existing.length >= 3) {
+    document.getElementById('addSpeakerConfigBtn').style.display = 'none';
+    return;
+  }
+  const idx = configSpeakerCount++;
+  const defaultRole = role || (idx === 0 ? 'Host' : idx === 1 ? 'Student' : 'Expert');
+  const card = document.createElement('div');
+  card.className = 'speaker-config-card';
+  card.innerHTML = `
+    <input class="speaker-config-role" type="text" value="${defaultRole}" list="rolesDatalist" spellcheck="false">
+    ${existing.length >= 2 ? '<button class="speaker-config-remove" onclick="this.parentElement.remove();updateAddBtn()">✕</button>' : ''}
+  `;
+  container.appendChild(card);
+  updateAddBtn();
+}
+
+function updateAddBtn() {
+  const count = document.querySelectorAll('.speaker-config-card').length;
+  document.getElementById('addSpeakerConfigBtn').style.display = count >= 3 ? 'none' : 'inline-block';
+}
+
+function getSpeakerRoles() {
+  const cards = document.querySelectorAll('.speaker-config-card');
+  return [...cards].map(c => c.querySelector('.speaker-config-role').value.trim()).filter(Boolean);
+}
+
+// Init with 2 default speakers
+addSpeakerConfig('Host');
+addSpeakerConfig('Student');
+
+async function startGeneration() {
+  const topic = document.getElementById('topic').value.trim();
+  if (!topic) { showToast('Please enter a podcast topic'); return; }
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('progressArea').style.display = 'block';
+  document.getElementById('ttsSection').style.display = 'none';
+  setProgress(0);
+  setStatus('running', 'Starting...');
+  document.querySelectorAll('.stage-item').forEach(el => el.classList.remove('active', 'done'));
+  ['outline','research','draft','critique','final'].forEach(id => {
+    document.getElementById(id + 'Placeholder').style.display = 'block';
+    document.getElementById(id + 'Content').style.display = 'none';
+  });
+
+  const roles = getSpeakerRoles();
+  if (roles.length < 2) { showToast('Add at least 2 speakers'); document.getElementById('generateBtn').disabled = false; return; }
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, roles }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({error: res.statusText}));
+      throw new Error(err.error || 'Server error');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const lines = part.split('\n');
+        let eventType = '', dataStr = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+          if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
+        }
+        if (dataStr) {
+          try { handleSSEEvent(eventType, JSON.parse(dataStr)); }
+          catch (e) { console.warn('Parse error:', dataStr); }
+        }
+      }
+    }
+
+    setStatus('done', 'Complete!');
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('ttsSection').style.display = 'block';
+    // Pre-populate TTS with the roles used
+    lastRoles = roles.slice();
+    setupTTSCards(roles);
+    showToast('✅ Podcast generated! Use TTS controls to play it.');
+  } catch (err) {
+    setStatus('error', 'Error: ' + err.message);
+    document.getElementById('generateBtn').disabled = false;
+    showToast('Generation failed: ' + err.message);
+  }
+}
+
+function handleSSEEvent(event, data) {
+  switch (event) {
+    case 'stage':
+      if (data.stage === 'generating_outline') activateStage('outline');
+      else if (data.stage === 'researching') { completeStage('outline'); activateStage('research'); }
+      else if (data.stage === 'writing_script') { completeStage('research'); activateStage('write'); }
+      else if (data.stage === 'critiquing') { completeStage('write'); activateStage('critique'); }
+      else if (data.stage === 'revising') { completeStage('critique'); activateStage('revise'); }
+      else if (data.stage === 'complete') { completeStage('revise'); completeStage('done'); activateStage('done'); }
+      setStatus('running', data.label || event);
+      if (data.progress) setProgress(data.progress);
+      break;
+    case 'outline':
+      document.getElementById('outlinePlaceholder').style.display = 'none';
+      const oc = document.getElementById('outlineContent');
+      oc.style.display = 'block';
+      oc.innerHTML = renderMarkdown(data.outline || '');
+      break;
+    case 'research':
+      document.getElementById('researchPlaceholder').style.display = 'none';
+      const rc = document.getElementById('researchContent');
+      rc.style.display = 'block';
+      rc.innerHTML = renderResearch(data.results || []);
+      break;
+    case 'draft':
+      document.getElementById('draftPlaceholder').style.display = 'none';
+      const dc = document.getElementById('draftContent');
+      dc.style.display = 'block';
+      dc.innerHTML = renderMarkdown(data.draft || '');
+      break;
+    case 'critique':
+      document.getElementById('critiquePlaceholder').style.display = 'none';
+      const cc = document.getElementById('critiqueContent');
+      cc.style.display = 'block';
+      cc.innerHTML = renderMarkdown(data.critique || '');
+      break;
+    case 'revision':
+    case 'complete': {
+      const draft = data.draft || data.final_draft || '';
+      document.getElementById('finalPlaceholder').style.display = 'none';
+      const fc = document.getElementById('finalContent');
+      fc.style.display = 'block';
+      fc.innerHTML = renderAsLines(draft);
+      break;
+    }
+    case 'error':
+      setStatus('error', 'Error occurred');
+      showToast(data.message || 'An error occurred');
+      break;
+  }
+}
+</script>
+</body>
+</html>
