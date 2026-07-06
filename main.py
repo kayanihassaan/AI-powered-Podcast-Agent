@@ -8,7 +8,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
